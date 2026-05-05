@@ -1,0 +1,32 @@
+# Virtual environment
+soc_venv/
+
+# Large data files
+mitre_attack.json
+sample_logs.json
+chroma_db/
+
+# Reports output
+reports/
+investigated.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Model file (too large for GitHub)
+*.pkl
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
