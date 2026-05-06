@@ -212,4 +212,4 @@ MIT
 
 ## 👤 Author
 
-Built by **Atharva Amle** — [GitHub: Atharva2410](https://github.com/Atharva2410)
+Built by **Atharva Amle** — [GitHub: Athar2410](https://github.com/Athar2410)
