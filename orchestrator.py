@@ -1,38 +1,59 @@
 from crewai import Crew, Task
 from soc_agents.triage_agent import triage_agent
-from soc_agents.hunter_agent import hunter_agent
-from soc_agents.forensics_agent import forensics_agent
 from soc_agents.reporter_agent import reporter_agent
+from tools.agent_tools import (
+    assign_severity, query_vector_db, mitre_lookup,
+    enrich_ioc, timeline_reconstruct, lateral_movement_check
+)
+import re
+
+def extract_ip(text: str) -> str:
+    match = re.search(r'\b(\d{1,3}(?:\.\d{1,3}){3})\b', text)
+    return match.group(1) if match else "unknown"
 
 def run_soc_pipeline(alert: str) -> str:
-    t1 = Task(
-        description=f"Triage this alert and assign a severity score:\n{alert}",
-        agent=triage_agent,
-        expected_output="Severity score (1-10) and brief classification summary."
+    attacker_ip = extract_ip(alert)
+
+    # ── All tool calls directly in Python ────────────────────────────────
+    severity_result  = assign_severity.run(alert)
+    log_results      = query_vector_db.run("lateral movement SMB attack high severity")
+    mitre_result     = mitre_lookup.run("T1021")
+    ioc_result       = enrich_ioc.run(attacker_ip)
+    timeline_result  = timeline_reconstruct.run(attacker_ip)
+    lateral_result   = lateral_movement_check.run(attacker_ip)
+
+    triage_output = (
+        f"Alert: {alert}\n"
+        f"Attack Type: {severity_result}"
     )
-    t2 = Task(
-        description="Based on the triage findings, hunt for related log events and enrich any IOCs found.",
-        agent=hunter_agent,
-        expected_output="Related events found, IOC enrichment results, suspected MITRE tactic."
+    hunter_output = (
+        f"Related log events:\n{log_results}\n\n"
+        f"MITRE ATT&CK:\n{mitre_result}\n\n"
+        f"IOC Enrichment ({attacker_ip}):\n{ioc_result}"
     )
-    t3 = Task(
-        description="Using all findings so far, reconstruct the attack timeline and check for lateral movement.",
-        agent=forensics_agent,
-        expected_output="Ordered timeline of events, lateral movement assessment."
+    forensics_output = (
+        f"Attack Timeline:\n{timeline_result}\n\n"
+        f"Lateral Movement Check:\n{lateral_result}"
     )
-    t4 = Task(
-        description="Write a full incident report summarizing all findings from Triage, Hunter, and Forensics.",
+
+    # ── Only ReporterAgent uses CrewAI ────────────────────────────────────
+    report_task = Task(
+        description=(
+            f"Write a complete incident report using ONLY the findings below.\n\n"
+            f"=== TRIAGE ===\n{triage_output}\n\n"
+            f"=== THREAT HUNTING ===\n{hunter_output}\n\n"
+            f"=== FORENSICS ===\n{forensics_output}\n\n"
+            f"Use the exact MITRE technique from Threat Hunting. "
+            f"Use the exact timestamps from Forensics. "
+            f"Do NOT invent any data not present above."
+        ),
         agent=reporter_agent,
-        expected_output="Structured incident report: Summary, Severity, Timeline, Recommended Actions."
+        expected_output="Markdown incident report: Summary, Severity, Timeline, MITRE Technique, Recommended Actions."
     )
+    report_crew = Crew(agents=[reporter_agent], tasks=[report_task], verbose=True)
+    return str(report_crew.kickoff())
 
-    crew = Crew(
-        agents=[triage_agent, hunter_agent, forensics_agent, reporter_agent],
-        tasks=[t1, t2, t3, t4],
-        verbose=True
-    )
-    return crew.kickoff()
-
+    
 if __name__ == "__main__":
     sample_alert = "Suspicious SMB traffic detected from 192.168.1.105 to multiple hosts on port 445."
     print("\n=== SOC PIPELINE RESULT ===\n")
