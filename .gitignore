@@ -30,3 +30,8 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+hitl_queue.db
+investigated.json
+blocked_ips.log
+tickets.log
