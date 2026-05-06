@@ -12,5 +12,8 @@ hunter_agent = Agent(
         "real ATT&CK technique details for any tactic or technique ID you find."
     ),
     tools=[query_vector_db, enrich_ioc, mitre_lookup],
-    llm=llm, verbose=True, allow_delegation=False, max_iter=5
+    llm=llm,
+    verbose=True,
+    allow_delegation=False,
+    max_iter=5
 )

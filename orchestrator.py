@@ -1,4 +1,6 @@
 import re
+from dotenv import load_dotenv
+load_dotenv()
 from crewai import Crew, Task
 from soc_agents.reporter_agent import reporter_agent
 from tools.agent_tools import (
